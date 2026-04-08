@@ -1,27 +1,4 @@
 ---@diagnostic disable: missing-fields
-
--- INFO: introduction
--- this is a minimal neovim configuration written in lua. this is not meant to
--- be a distribution, but rather a template for you to build upon and/or a
--- reference for how to configure neovim using lua in the latest version.
---
--- TUTOR:
--- if you're completely new to neovim and/or vim, consider going through
--- `:Tutor` inside neovim to get a basic idea of how it works.
---     if you don't know what this means, type the following:
---       - <escape key>
---       - :
---       - Tutor
---       - <enter key>
---
--- LUA:
--- some level of familiarity with lua/programming languages are also expected.
--- if you're new to lua, consider going through the official reference:
---    https://www.lua.org/manual
--- or a more friendly tutorial like:
---    https://learnxinyminutes.com/docs/lua/
--- you can also check out `:h lua-guide` inside neovim for a neovim-specific
--- lua guide.
 --
 -- DEPENDENCIES:
 -- this configuration assumes you have the following tools installed on your
@@ -31,19 +8,6 @@
 --    clipboard tool: xclip/xsel/win32yank - for clipboard sharing between OS and neovim (see `h: clipboard-tool`)
 --    a nerdfont (ensure the terminal running neovim is using it)
 -- run `:checkhealth` inside neovim to see if your system is missing anything.
---
--- MINIMAL:
--- to say that something is 'minimal' you have to define what variable you're
--- minimizing. this configuration minimizes for lines of code and concepts.
--- to some, this configuration may have too many plugins. for example, using
--- mason.nvim to manage lsp servers will be an unnecessary dependency if the
--- user is already familiar with lsps and is comfortable managing them through
--- their OS package manager. but to someone that isn't familiar with lsp servers
--- this approach wouldn't cover everything needed to have the 'minimum' necessary
--- for lsp + completion + fuzzy finding. to some, fuzzy finding is also a bloated
--- dependency.
--- this configuration is only a starting point/reference. it is expected that
--- the user will change the configuration to suit their needs.
 
 
 -- INFO: options
@@ -64,13 +28,28 @@ vim.opt.termguicolors = true
 vim.opt.number = true
 vim.opt.relativenumber = true
 
+-- case-insensitive searching UNLESS \C or one or more capital letters in the search term
+vim.o.ignorecase = true
+vim.o.smartcase = true
+
+-- minimal number of screen lines to keep above and below the cursor
+vim.o.scrolloff = 5
+
+-- if performing an operation that would fail due to unsaved changes in the buffer (like `:q`),
+-- instead raise a dialog asking if you wish to save the current file(s)
+-- See `:help 'confirm'`
+vim.o.confirm = true
+
 -- enable mouse mode, can be useful for resizing splits
 vim.opt.mouse = "a"
 
--- sync clipboard between OS and neovim.
---  remove this option if you want your OS clipboard to remain independent.
---  see `:help 'clipboard'`
-vim.opt.clipboard = "unnamedplus"
+-- Sync clipboard between OS and Neovim.
+--  Schedule the setting after `UiEnter` because it can increase startup-time.
+--  Remove this option if you want your OS clipboard to remain independent.
+--  See `:help 'clipboard'`
+vim.schedule(function()
+  vim.o.clipboard = 'unnamedplus'
+end)
 
 -- save undo history
 vim.opt.undofile = true
@@ -117,11 +96,41 @@ vim.diagnostic.config({
   virtual_text = true, -- show inline diagnostics
 })
 
+-- INFO: Keymaps
+
 -- clear search highlights with <Esc>
-vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR>")
+vim.keymap.set("n", "<Esc>", ":nohlsearch<CR>")
+
+-- TAB-based indent without losing the selection
+vim.keymap.set("v", "<Tab>", ">gv", { desc = "Indent and reselect" })
+vim.keymap.set("v", "<S-Tab>", "<gv", { desc = "Outdent and reselect" })
 
 -- INFO: colorscheme
-vim.cmd.colorscheme("catppuccin")
+vim.pack.add({ "https://github.com/rebelot/kanagawa.nvim" }, { confirm = false })
+vim.cmd.colorscheme("kanagawa")
+
+-- INFO: autoreload check
+-- Check if we need to reload the file when it changed
+-- source: https://github.com/LazyVim/LazyVim/blob/25abbf546d564dc484cf903804661ba12de45507/lua/lazyvim/config/autocmds.lua#L9
+vim.api.nvim_create_autocmd({ "FocusGained", "TermClose", "TermLeave" }, {
+  group = vim.api.nvim_create_augroup('kickstart-checktime', { clear = true }),
+  callback = function()
+    if vim.o.buftype ~= "nofile" then
+      vim.cmd("checktime")
+    end
+  end,
+})
+
+-- INFO: highlight when yanking (copying) text
+--  Try it with `yap` in normal mode
+--  See `:help vim.hl.on_yank()`
+vim.api.nvim_create_autocmd('TextYankPost', {
+  desc = 'Highlight when yanking (copying) text',
+  group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
+  callback = function()
+    vim.hl.on_yank()
+  end,
+})
 
 -- INFO: plugins
 -- we install plugins with neovim's builtin package manager: vim.pack
@@ -144,9 +153,15 @@ vim.pack.add({ "https://github.com/nvim-treesitter/nvim-treesitter" }, { confirm
 -- equivalent to :TSUpdate
 require("nvim-treesitter.install").update("all")
 
-require("nvim-treesitter.configs").setup({
+require("nvim-treesitter.config").setup({
   auto_install = true, -- autoinstall languages that are not installed yet
 })
+
+
+-- INFO: Indent detection
+
+vim.pack.add({ "https://github.com/NMAC427/guess-indent.nvim" }, { confirm = false })
+require("guess-indent").setup()
 
 -- INFO: completion engine
 vim.pack.add({ "https://github.com/saghen/blink.cmp" }, { confirm = false })
@@ -155,30 +170,25 @@ require("blink.cmp").setup({
   completion = {
     documentation = {
       auto_show = true,
+      auto_show_delay_ms = 500,
     },
   },
 
-  -- default blink keymaps
+  appearance = {
+    -- 'mono' (default) for 'Nerd Font Mono' or 'normal' for 'Nerd Font'
+    -- Adjusts spacing to ensure icons are aligned
+    nerd_font_variant = 'mono',
+  },
+
   keymap = {
-    ['<C-p>'] = { 'select_prev', 'fallback_to_mappings' },
-    ['<C-n>'] = { 'select_next', 'fallback_to_mappings' },
-
-    ['<C-y>'] = { 'select_and_accept', 'fallback' },
-    ['<C-e>'] = { 'cancel', 'fallback' },
-    ['<C-space>'] = { 'show', 'show_documentation', 'hide_documentation' },
-
-    ['<Tab>'] = { 'snippet_forward', 'fallback' },
-    ['<S-Tab>'] = { 'snippet_backward', 'fallback' },
-
-    ['<C-b>'] = { 'scroll_documentation_up', 'fallback' },
-    ['<C-f>'] = { 'scroll_documentation_down', 'fallback' },
-
-    ['<C-k>'] = { 'show_signature', 'hide_signature', 'fallback' },
+    preset = 'enter',
   },
 
   fuzzy = {
     implementation = "lua",
   },
+
+  signature = { enabled = true },
 })
 
 -- INFO: lsp server installation and configuration
@@ -197,20 +207,7 @@ local lsp_servers = {
 
 vim.pack.add({
   "https://github.com/neovim/nvim-lspconfig", -- default configs for lsps
-
-  -- NOTE: if you'd rather install the lsps through your OS package manager you
-  -- can delete the next three mason-related lines and their setup calls below.
-  -- see `:h lsp-quickstart` for more details.
-  "https://github.com/mason-org/mason.nvim",                     -- package manager
-  "https://github.com/mason-org/mason-lspconfig.nvim",           -- lspconfig bridge
-  "https://github.com/WhoIsSethDaniel/mason-tool-installer.nvim" -- auto installer
 }, { confirm = false })
-
-require("mason").setup()
-require("mason-lspconfig").setup()
-require("mason-tool-installer").setup({
-  ensure_installed = vim.tbl_keys(lsp_servers),
-})
 
 -- configure each lsp server on the table
 -- to check what clients are attached to the current buffer, use
@@ -256,9 +253,106 @@ vim.pack.add({ "https://github.com/folke/which-key.nvim" }, { confirm = false })
 
 require("which-key").setup({
   spec = {
-    { "<leader>s", group = "[S]earch", icon = { icon = "", color = "green", }, },
+    { "<leader>s", group = "[S]earch" },
+    { "<leader>x", group = "Trouble" },
   }
 })
+
+
+-- INFO: file tree explorer
+
+vim.pack.add({
+  {
+    src = 'https://github.com/nvim-neo-tree/neo-tree.nvim',
+    version = vim.version.range('3')
+  },
+  -- dependencies
+  "https://github.com/nvim-lua/plenary.nvim",
+  "https://github.com/MunifTanjim/nui.nvim",
+  -- optional, but recommended
+  "https://github.com/nvim-tree/nvim-web-devicons",
+}, { confirm = false })
+
+require('neo-tree').setup({
+  filesystem = {
+    window = {
+      mappings = {
+        ['\\'] = 'close_window',
+      },
+    },
+  },
+})
+
+vim.keymap.set("n", "\\", ":Neotree reveal<CR>", { desc = "NeoTree reveal", })
+
+
+-- INFO: trouble - A pretty list for showing diagnostics, references, etc...
+vim.pack.add({
+  "https://github.com/folke/trouble.nvim",
+}, { confirm = false })
+
+require("trouble").setup()
+
+vim.keymap.set("n", "<leader>xx", ":Trouble diagnostics toggle<cr>", { desc = "Diagnostics (Trouble)", })
+vim.keymap.set("n", "<leader>xX", ":Trouble diagnostics toggle filter.buf=0<cr>", { desc = "Buffer Diagnostics (Trouble)", })
+vim.keymap.set("n", "<leader>cs", ":Trouble symbols toggle focus=false<cr>", { desc = "Symbols (Trouble)", })
+vim.keymap.set("n", "<leader>cl", ":Trouble lsp toggle focus=false win.position=right<cr>", { desc = "LSP Definitions / references / ... (Trouble)", })
+vim.keymap.set("n", "<leader>xL", ":Trouble loclist toggle<cr>", { desc = "Location List (Trouble)", })
+vim.keymap.set("n", "<leader>xQ", ":Trouble qflist toggle<cr>", { desc = "Quickfix List (Trouble)", })
+vim.keymap.set("n", "<leader>xi", ":Trouble todo filter = {tag = {INFO,NOTE,HACK,IMPORTANT,WARN,WARNING}}<cr>", { desc = "Info Comments (Trouble)", })
+vim.keymap.set("n", "<leader>xt", ":Trouble todo filter = {tag = {TODO,FIX,FIXME,BUG}}<cr>", { desc = "Todo Comments (Trouble)", })
+
+-- INFO: grug-far - Search and Replace
+vim.pack.add({
+  "https://github.com/MagicDuck/grug-far.nvim",
+}, { confirm = false })
+
+local gf = require('grug-far')
+gf.setup({})
+
+vim.keymap.set('n', '<leader>sa', gf.open, { desc = '[S]earch [A]nd Replace' })
+
+-- INFO: flash - Enhanced search and navigation
+vim.pack.add({
+  "https://github.com/folke/flash.nvim",
+}, { confirm = false })
+
+require('flash').setup({})
+
+vim.keymap.set({ "n", "x", "o" }, "s", function() require("flash").jump() end, { desc = "Flash" })
+vim.keymap.set({ "n", "x", "o" }, "S", function() require("flash").treesitter() end, { desc = "Flash Treesitter" })
+
+-- INFO: auto-session - Automatic session management
+vim.pack.add({
+  "https://github.com/rmagatti/auto-session",
+}, { confirm = false })
+
+require('auto-session').setup({
+  suppressed_dirs = { '~/', '~/Downloads' },
+})
+
+-- INFO: other utilites
+vim.pack.add({
+  "https://github.com/lewis6991/gitsigns.nvim", -- git integration
+  "https://github.com/windwp/nvim-autopairs", -- automatic pairs
+  "https://github.com/folke/todo-comments.nvim", -- hilight TODO/BUG/INFO/... comments
+  "https://github.com/folke/zen-mode.nvim", -- zen mode
+  "https://github.com/nvim-lua/plenary.nvim", -- library dependency
+}, { confirm = false })
+
+require('gitsigns').setup({
+  signs = {
+    add = { text = '+' },
+    change = { text = '~' },
+    delete = { text = '_' },
+    topdelete = { text = '‾' },
+    changedelete = { text = '~' },
+  },
+})
+require("nvim-autopairs").setup({ signs = false })
+require("todo-comments").setup({ signs = false })
+
+vim.keymap.set("n", "<leader>z", ":ZenMode<CR>", { desc = "[Z]en Mode", })
 
 -- uncomment to enable automatic plugin updates
 -- vim.pack.update()
