@@ -99,7 +99,7 @@ vim.diagnostic.config({
 -- INFO: Keymaps
 
 -- clear search highlights with <Esc>
-vim.keymap.set("n", "<Esc>", ":nohlsearch<CR>")
+vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR>")
 
 -- TAB-based indent without losing the selection
 vim.keymap.set("v", "<Tab>", ">gv", { desc = "Indent and reselect" })
@@ -203,6 +203,13 @@ local lsp_servers = {
   clangd = {},
   rust_analyzer = {},
   gopls = {},
+  ty = {},
+  ruff = {},
+  ts_ls = {},
+  tailwindcss = {},
+  qmlls = {
+    cmd = { 'qmlls6' },
+  },
 }
 
 vim.pack.add({
@@ -219,10 +226,22 @@ for server, config in pairs(lsp_servers) do
     -- only create the keymaps if the server attaches successfully
     on_attach = function(_, bufnr)
       vim.keymap.set("n", "grd", vim.lsp.buf.definition,
-        { buffer = bufnr, desc = "vim.lsp.buf.definition()", })
+        { buffer = bufnr, desc = "[G]o to [D]efinition", })
 
       vim.keymap.set("n", "grf", vim.lsp.buf.format,
-        { buffer = bufnr, desc = "vim.lsp.buf.format()", })
+        { buffer = bufnr, desc = "[F]ormat", })
+
+      vim.keymap.set("n", "K", vim.lsp.buf.hover,
+        { buffer = bufnr, desc = "Hover Documentation", })
+
+      vim.keymap.set("n", "grn", vim.lsp.buf.rename,
+        { buffer = bufnr, desc = "[R]e[n]ame", })
+
+      vim.keymap.set("n", "gra", vim.lsp.buf.code_action,
+        { buffer = bufnr, desc = "Code [A]ction", })
+
+      vim.keymap.set("n", "grr", vim.lsp.buf.references,
+        { buffer = bufnr, desc = "[R]eferences", })
     end,
   })
 end
@@ -255,6 +274,8 @@ require("which-key").setup({
   spec = {
     { "<leader>s", group = "[S]earch" },
     { "<leader>x", group = "Trouble" },
+    { "<leader>c", group = "[C]ode" },
+    { "<leader>g", group = "[G]it" },
   }
 })
 
@@ -349,6 +370,11 @@ require('gitsigns').setup({
     changedelete = { text = '~' },
   },
 })
+
+vim.keymap.set("n", "<leader>gb", ":Gitsigns blame_line<CR>", { desc = "[G]it [B]lame Line" })
+vim.keymap.set("n", "<leader>gh", ":Gitsigns preview_hunk<CR>", { desc = "[G]it Preview [H]unk" })
+vim.keymap.set("n", "]h", ":Gitsigns next_hunk<CR>", { desc = "Next [H]unk" })
+vim.keymap.set("n", "[h", ":Gitsigns prev_hunk<CR>", { desc = "Prev [H]unk" })
 require("nvim-autopairs").setup({ signs = false })
 require("todo-comments").setup({ signs = false })
 
