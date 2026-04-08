@@ -132,6 +132,9 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   end,
 })
 
+-- INFO: New UI opt-in
+require('vim._core.ui2').enable({})
+
 -- INFO: plugins
 -- we install plugins with neovim's builtin package manager: vim.pack
 -- and then enable/configure them by calling their setup functions.
@@ -244,7 +247,9 @@ for server, config in pairs(lsp_servers) do
         { buffer = bufnr, desc = "[R]eferences", })
     end,
   })
+  vim.lsp.enable(server)
 end
+
 
 -- INFO: fuzzy finder
 vim.pack.add({
