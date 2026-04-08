@@ -250,6 +250,7 @@ for server, config in pairs(lsp_servers) do
   vim.lsp.enable(server)
 end
 
+vim.keymap.set("n", "<leader>ch", "<cmd>checkhealth vim.lsp<CR>", { desc = "[C]heck [H]ealth (LSP)" })
 
 -- INFO: fuzzy finder
 vim.pack.add({
